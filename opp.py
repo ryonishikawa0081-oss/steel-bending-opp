@@ -145,7 +145,7 @@ fig.update_layout(
         activecolor='#747A4A'
     ),
     dragmode="orbit",
-    doubleclick="reset",
+    doubleclick="reset",   # ← 修正ポイント
     showlegend=False,
     height=700,
     margin=dict(l=0, r=0, b=0, t=0),
@@ -161,3 +161,4 @@ config = {
 }
 
 st.plotly_chart(fig, use_container_width=True, config=config)
+
