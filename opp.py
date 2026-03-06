@@ -140,11 +140,11 @@ fig.update_layout(
         camera_projection=dict(type='perspective')
     ),
     dragmode="orbit",
-    doubleclick="reset",
+    doubleClick="reset",
     showlegend=False,
     height=700,
     margin=dict(l=0, r=0, b=0, t=0),
-    hovermode=None
+    hovermode=False # ここを文字列の False に修正
 )
 
 # Plotlyのコンフィグ設定
@@ -156,5 +156,3 @@ config = {
 }
 
 st.plotly_chart(fig, use_container_width=True, config=config)
-
-
