@@ -9,6 +9,7 @@ st.title("🏗️ 鋼材曲げ3D：高精度ソリッド＆解析版")
 
 # --- 1. 基本設定 ---
 st.sidebar.header("🛠️ 1. 基本設定")
+st.sidebar.info("💡 スマホ操作：指1本で回転、指2本で拡大縮小")
 shape_type = st.sidebar.selectbox("曲げ形状", ["L型", "コの字型", "Z型 (段曲げ)", "ハット型"])
 mat_type = st.sidebar.selectbox("材質", ["鉄 (7.85)", "ステンレス (7.93)", "アルミ (2.70)"])
 densities = {"鉄 (7.85)": 7.85, "ステンレス (7.93)": 7.93, "アルミ (2.70)": 2.70}
@@ -83,7 +84,7 @@ for i, val in enumerate(b_vals):
 
 total_ba = sum([2 * np.pi * (r + k * t) * (ang / 360) for ang in a_vals])
 total_L = total_slen + total_ba
-weight = total_L * width_plate * t * densities[mat_type] / 1_000_000
+weight = total_L * width_plate * t * densities[mat_type] / 1_000_000de,
 
 with st.expander("📊 寸法解析結果・重量", expanded=True):
     col_a, col_b = st.columns([2, 1])
@@ -110,33 +111,4 @@ fig = go.Figure()
 y_v = [0, width_plate]
 
 # 表面・裏面
-for p, color, name in [(p_o, munsell_out, '外面'), (p_i, munsell_in, '内面')]:
-    X, Y = np.meshgrid(p[:,0], y_v)
-    Z, _ = np.meshgrid(p[:,1], y_v)
-    fig.add_trace(go.Surface(x=X, y=Y, z=Z, colorscale=[[0,color],[1,color]], showscale=False, name=name, lighting=dict(ambient=0.6)))
-
-# 側面（厚み部分）を密集線で塗りつぶす
-for y in y_v:
-    for i in range(len(p_o)):
-        fig.add_trace(go.Scatter3d(
-            x=[p_o[i,0], p_i[i,0]], y=[y, y], z=[p_o[i,1], p_i[i,1]],
-            mode='lines', line=dict(color=munsell_edge, width=4), showlegend=False
-        ))
-    fig.add_trace(go.Scatter3d(x=p_o[:,0], y=[y]*len(p_o), z=p_o[:,1], mode='lines', line=dict(color='black', width=3), showlegend=False))
-    fig.add_trace(go.Scatter3d(x=p_i[:,0], y=[y]*len(p_i), z=p_i[:,1], mode='lines', line=dict(color='black', width=3), showlegend=False))
-
-# 前後の断面エッジ
-for i in [0, -1]:
-    for p in [p_o, p_i]:
-        fig.add_trace(go.Scatter3d(x=[p[i,0]]*2, y=y_v, z=[p[i,1]]*2, mode='lines', line=dict(color='black', width=3), showlegend=False))
-
-fig.update_layout(
-    scene=dict(
-        xaxis_title="長さ", yaxis_title="幅(W)", zaxis_title="高さ",
-        aspectmode='data', camera=st.session_state.cam
-    ),
-    showlegend=False, 
-    height=800, margin=dict(l=0, r=0, b=0, t=0)
-)
-
-st.plotly_chart(fig, use_container_width=True)
+for p, color, name in [(p_o, munsell_out, '外面'), (p_i
