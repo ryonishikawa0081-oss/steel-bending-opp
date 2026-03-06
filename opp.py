@@ -4,15 +4,11 @@ import plotly.graph_objects as go
 import pandas as pd
 
 # ページ設定
-st.set_page_config(page_title="鋼材曲げ3D", layout="wide")
-st.title("🏗️ 鋼材曲げ3D：スマホ操作強化版")
+st.set_page_config(page_title="鋼材曲げ3D：高精度ソリッド＆解析版", layout="wide")
+st.title("🏗️ 鋼材曲げ3D：高精度ソリッド＆解析版")
 
-# --- メイン画面にズームスライダーを配置 ---
-st.write("### 🔍 図面の拡大・縮小")
-zoom_scale = st.slider("スライダーを左右に動かしてください (左ほど拡大)", 0.1, 5.0, 1.5, 0.1)
-
-# --- 1. 基本設定 (サイドバー) ---
-st.sidebar.header("🛠️ 設定")
+# --- 1. 基本設定 ---
+st.sidebar.header("🛠️ 1. 基本設定")
 shape_type = st.sidebar.selectbox("曲げ形状", ["L型", "コの字型", "Z型 (段曲げ)", "ハット型"])
 mat_type = st.sidebar.selectbox("材質", ["鉄 (7.85)", "ステンレス (7.93)", "アルミ (2.70)"])
 densities = {"鉄 (7.85)": 7.85, "ステンレス (7.93)": 7.93, "アルミ (2.70)": 2.70}
@@ -23,7 +19,7 @@ r = st.sidebar.number_input("内R (r) [mm]", value=2.0, min_value=0.1, step=0.1)
 k = st.sidebar.slider("中立軸係数 (k)", 0.2, 0.6, 0.35, 0.01)
 
 st.sidebar.divider()
-st.sidebar.header("📐 各辺と角度")
+st.sidebar.header("📐 2. 各辺と角度")
 
 if shape_type == "L型":
     b_vals, a_vals, labels, dirs, b_idx = [50.0, 60.0], [90.0], ["B1", "B2"], [1], 0
@@ -34,8 +30,10 @@ elif shape_type == "Z型 (段曲げ)":
 elif shape_type == "ハット型":
     b_vals, a_vals, labels, dirs, b_idx = [30.0, 50.0, 100.0, 50.0, 30.0], [90.0, 90.0, 90.0, 90.0], ["B1", "B2", "A", "B3", "B4"], [1, 1, 1, 1], 2
 
-for i in range(len(b_vals)): b_vals[i] = st.sidebar.number_input(f"{labels[i]}", value=float(b_vals[i]))
-for i in range(len(a_vals)): a_vals[i] = st.sidebar.number_input(f"角度{i+1}", value=float(a_vals[i]))
+for i in range(len(b_vals)):
+    b_vals[i] = st.sidebar.number_input(f"{labels[i]} [mm]", value=float(b_vals[i]))
+for i in range(len(a_vals)):
+    a_vals[i] = st.sidebar.number_input(f"角度{i+1} [°]", value=float(a_vals[i]))
 
 # --- 2. 座標計算ロジック ---
 def get_solid_profiles(t_val, r_val, b_list, a_list, dirs_list, base_index):
@@ -75,7 +73,7 @@ def get_solid_profiles(t_val, r_val, b_list, a_list, dirs_list, base_index):
 
 p_o, p_i = get_solid_profiles(t, r, b_vals, a_vals, dirs, b_idx)
 
-# --- 3. 解析結果 ---
+# --- 3. 解析結果・重量 ---
 analysis = []
 total_slen = 0
 for i, val in enumerate(b_vals):
@@ -83,36 +81,38 @@ for i, val in enumerate(b_vals):
     on = (r+t)*np.tan(np.radians(a_vals[i])/2) if i < len(a_vals) else 0
     slen = max(0.1, val - op - on)
     total_slen += slen
-    analysis.append({"部位": labels[i], "外寸": f"{val:.2f}"})
+    analysis.append({"部位": labels[i], "入力外寸": f"{val:.2f}", "直線長さ": f"{slen:.2f}"})
 
 total_ba = sum([2 * np.pi * (r + k * t) * (ang / 360) for ang in a_vals])
 total_L = total_slen + total_ba
 weight = total_L * width_plate * t * densities[mat_type] / 1_000_000
 
-with st.expander("📊 重量と展開長", expanded=True):
-    st.write(f"**総展開長:** {total_L:.2f} mm / **重量:** {weight:.2f} kg")
+with st.expander("📊 寸法解析・概算重量", expanded=True):
+    col_a, col_b = st.columns([2, 1])
+    col_a.table(pd.DataFrame(analysis))
+    col_b.metric("総展開長 (L)", f"{total_L:.2f} mm")
+    col_b.metric("概算重量", f"{weight:.2f} kg")
 
-# --- 4. 3Dビュー ---
-st.write("### 📸 3Dビュー (1本指で回転)")
-
+# --- 4. 3D描画 ---
 fig = go.Figure()
 y_v = [0, width_plate]
-for p, color in [(p_o, '#747A4A'), (p_i, '#8B9165')]:
+
+for p, color, name in [(p_o, '#747A4A', '外面'), (p_i, '#8B9165', '内面')]:
     X, Y = np.meshgrid(p[:,0], y_v)
     Z, _ = np.meshgrid(p[:,1], y_v)
-    fig.add_trace(go.Surface(x=X, y=Y, z=Z, colorscale=[[0,color],[1,color]], showscale=False))
+    fig.add_trace(go.Surface(x=X, y=Y, z=Z, colorscale=[[0,color],[1,color]], showscale=False, name=name))
 
 for y in y_v:
-    for i in range(len(p_o)):
-        fig.add_trace(go.Scatter3d(x=[p_o[i,0], p_i[i,0]], y=[y, y], z=[p_o[i,1], p_i[i,1]], mode='lines', line=dict(color='#4B4F30', width=4), showlegend=False))
+    fig.add_trace(go.Scatter3d(x=p_o[:,0], y=[y]*len(p_o), z=p_o[:,1], mode='lines', line=dict(color='black', width=3), showlegend=False))
+    fig.add_trace(go.Scatter3d(x=p_i[:,0], y=[y]*len(p_i), z=p_i[:,1], mode='lines', line=dict(color='black', width=3), showlegend=False))
 
-# スライダー値を反映したカメラ設定
-camera = dict(eye=dict(x=zoom_scale, y=zoom_scale, z=zoom_scale*0.8))
+for i in [0, -1]:
+    for p in [p_o, p_i]:
+        fig.add_trace(go.Scatter3d(x=[p[i,0]]*2, y=y_v, z=[p[i,1]]*2, mode='lines', line=dict(color='black', width=3), showlegend=False))
 
 fig.update_layout(
-    scene=dict(aspectmode='data', camera=camera),
-    dragmode="orbit",
-    height=600,
+    scene=dict(xaxis_title="L", yaxis_title="W", zaxis_title="H", aspectmode='data'),
+    height=700,
     margin=dict(l=0, r=0, b=0, t=0)
 )
 
