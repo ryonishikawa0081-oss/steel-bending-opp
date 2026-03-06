@@ -3,14 +3,16 @@ import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
 
+# ページ設定
 st.set_page_config(page_title="鋼材曲げ3D", layout="wide")
-st.title("🏗️ 鋼材曲げ3D：スマホ拡大対応版")
+st.title("🏗️ 鋼材曲げ3D：スマホ操作強化版")
 
-# --- 1. 基本設定 ---
-st.sidebar.header("🛠️ 1. 基本設定")
-# ズーム倍率をスライダーで操作できるように追加
-zoom_scale = st.sidebar.slider("🔍 図面の拡大・縮小", 0.1, 5.0, 1.5, 0.1)
+# --- メイン画面にズームスライダーを配置 ---
+st.write("### 🔍 図面の拡大・縮小")
+zoom_scale = st.slider("スライダーを左右に動かしてください (左ほど拡大)", 0.1, 5.0, 1.5, 0.1)
 
+# --- 1. 基本設定 (サイドバー) ---
+st.sidebar.header("🛠️ 設定")
 shape_type = st.sidebar.selectbox("曲げ形状", ["L型", "コの字型", "Z型 (段曲げ)", "ハット型"])
 mat_type = st.sidebar.selectbox("材質", ["鉄 (7.85)", "ステンレス (7.93)", "アルミ (2.70)"])
 densities = {"鉄 (7.85)": 7.85, "ステンレス (7.93)": 7.93, "アルミ (2.70)": 2.70}
@@ -21,7 +23,7 @@ r = st.sidebar.number_input("内R (r) [mm]", value=2.0, min_value=0.1, step=0.1)
 k = st.sidebar.slider("中立軸係数 (k)", 0.2, 0.6, 0.35, 0.01)
 
 st.sidebar.divider()
-st.sidebar.header("📐 2. 各辺と角度")
+st.sidebar.header("📐 各辺と角度")
 
 if shape_type == "L型":
     b_vals, a_vals, labels, dirs, b_idx = [50.0, 60.0], [90.0], ["B1", "B2"], [1], 0
@@ -73,7 +75,7 @@ def get_solid_profiles(t_val, r_val, b_list, a_list, dirs_list, base_index):
 
 p_o, p_i = get_solid_profiles(t, r, b_vals, a_vals, dirs, b_idx)
 
-# --- 3. 寸法解析 ---
+# --- 3. 解析結果 ---
 analysis = []
 total_slen = 0
 for i, val in enumerate(b_vals):
@@ -81,32 +83,18 @@ for i, val in enumerate(b_vals):
     on = (r+t)*np.tan(np.radians(a_vals[i])/2) if i < len(a_vals) else 0
     slen = max(0.1, val - op - on)
     total_slen += slen
-    analysis.append({"部位": labels[i], "外寸": f"{val:.2f}", "直線": f"{slen:.2f}"})
+    analysis.append({"部位": labels[i], "外寸": f"{val:.2f}"})
 
 total_ba = sum([2 * np.pi * (r + k * t) * (ang / 360) for ang in a_vals])
 total_L = total_slen + total_ba
 weight = total_L * width_plate * t * densities[mat_type] / 1_000_000
 
-with st.expander("📊 寸法解析・重量", expanded=True):
-    col_a, col_b = st.columns([2, 1])
-    col_a.table(pd.DataFrame(analysis))
-    col_b.metric("展開長", f"{total_L:.2f} mm")
-    col_b.metric("重量", f"{weight:.2f} kg")
+with st.expander("📊 重量と展開長", expanded=True):
+    st.write(f"**総展開長:** {total_L:.2f} mm / **重量:** {weight:.2f} kg")
 
-# --- 4. 視点設定 ---
-if 'cam' not in st.session_state: 
-    st.session_state.cam = dict(eye=dict(x=zoom_scale, y=zoom_scale, z=zoom_scale*0.8))
+# --- 4. 3Dビュー ---
+st.write("### 📸 3Dビュー (1本指で回転)")
 
-# スライダーの値でカメラ距離をリアルタイム更新
-st.session_state.cam['eye'] = dict(
-    x=zoom_scale, 
-    y=zoom_scale, 
-    z=zoom_scale*0.8
-)
-
-st.write("### 📸 3Dビュー (サイドバーのスライダーで拡大)")
-
-# --- 5. 3D描画 ---
 fig = go.Figure()
 y_v = [0, width_plate]
 for p, color in [(p_o, '#747A4A'), (p_i, '#8B9165')]:
@@ -117,18 +105,15 @@ for p, color in [(p_o, '#747A4A'), (p_i, '#8B9165')]:
 for y in y_v:
     for i in range(len(p_o)):
         fig.add_trace(go.Scatter3d(x=[p_o[i,0], p_i[i,0]], y=[y, y], z=[p_o[i,1], p_i[i,1]], mode='lines', line=dict(color='#4B4F30', width=4), showlegend=False))
-    fig.add_trace(go.Scatter3d(x=p_o[:,0], y=[y]*len(p_o), z=p_o[:,1], mode='lines', line=dict(color='black', width=3), showlegend=False))
-    fig.add_trace(go.Scatter3d(x=p_i[:,0], y=[y]*len(p_i), z=p_i[:,1], mode='lines', line=dict(color='black', width=3), showlegend=False))
+
+# スライダー値を反映したカメラ設定
+camera = dict(eye=dict(x=zoom_scale, y=zoom_scale, z=zoom_scale*0.8))
 
 fig.update_layout(
-    scene=dict(
-        xaxis_title="L", yaxis_title="W", zaxis_title="H",
-        aspectmode='data',
-        camera=st.session_state.cam
-    ),
+    scene=dict(aspectmode='data', camera=camera),
     dragmode="orbit",
     height=600,
     margin=dict(l=0, r=0, b=0, t=0)
 )
 
-st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True})
+st.plotly_chart(fig, use_container_width=True)
