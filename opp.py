@@ -3,11 +3,13 @@ import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
 
+# ページ設定
 st.set_page_config(page_title="鋼材曲げ3D", layout="wide")
 st.title("🏗️ 鋼材曲げ3D：高精度ソリッド＆解析版")
 
+# --- 1. 基本設定 ---
 st.sidebar.header("🛠️ 1. 基本設定")
-st.sidebar.info("💡 スマホ操作：指1本で回転、指2本で拡大縮小")
+st.sidebar.info("💡 スマホ操作：指1本で回転、指2本で拡大縮小。または右上の＋ーボタンを使用。")
 shape_type = st.sidebar.selectbox("曲げ形状", ["L型", "コの字型", "Z型 (段曲げ)", "ハット型"])
 mat_type = st.sidebar.selectbox("材質", ["鉄 (7.85)", "ステンレス (7.93)", "アルミ (2.70)"])
 densities = {"鉄 (7.85)": 7.85, "ステンレス (7.93)": 7.93, "アルミ (2.70)": 2.70}
@@ -32,6 +34,7 @@ elif shape_type == "ハット型":
 for i in range(len(b_vals)): b_vals[i] = st.sidebar.number_input(f"{labels[i]}", value=float(b_vals[i]))
 for i in range(len(a_vals)): a_vals[i] = st.sidebar.number_input(f"角度{i+1}", value=float(a_vals[i]))
 
+# --- 2. 座標計算ロジック ---
 def get_solid_profiles(t_val, r_val, b_list, a_list, dirs_list, base_index):
     div = 40
     def gen_path():
@@ -69,6 +72,7 @@ def get_solid_profiles(t_val, r_val, b_list, a_list, dirs_list, base_index):
 
 p_o, p_i = get_solid_profiles(t, r, b_vals, a_vals, dirs, b_idx)
 
+# --- 3. 寸法解析・重量表示 ---
 analysis = []
 total_slen = 0
 for i, val in enumerate(b_vals):
@@ -88,6 +92,7 @@ with st.expander("📊 寸法解析・重量", expanded=True):
     col_b.metric("展開長", f"{total_L:.2f} mm")
     col_b.metric("重量", f"{weight:.2f} kg")
 
+# --- 4. 視点ボタン ---
 st.write("### 📸 視点")
 c = st.columns(4)
 if 'cam' not in st.session_state: st.session_state.cam = dict(eye=dict(x=1.5, y=1.5, z=1.2))
@@ -96,6 +101,7 @@ if c[1].button("平面"): st.session_state.cam = dict(eye=dict(x=0, y=0, z=2.5),
 if c[2].button("正面"): st.session_state.cam = dict(eye=dict(x=0, y=-2.5, z=0))
 if c[3].button("側面"): st.session_state.cam = dict(eye=dict(x=2.5, y=0, z=0))
 
+# --- 5. 3D描画 ---
 fig = go.Figure()
 y_v = [0, width_plate]
 for p, color in [(p_o, '#747A4A'), (p_i, '#8B9165')]:
@@ -113,6 +119,7 @@ for i in [0, -1]:
     for p in [p_o, p_i]:
         fig.add_trace(go.Scatter3d(x=[p[i,0]]*2, y=y_v, z=[p[i,1]]*2, mode='lines', line=dict(color='black', width=3), showlegend=False))
 
+# レイアウト設定
 fig.update_layout(
     scene=dict(
         xaxis_title="L", yaxis_title="W", zaxis_title="H",
@@ -120,8 +127,17 @@ fig.update_layout(
         camera=st.session_state.cam
     ),
     dragmode="orbit",
-    height=600,
+    height=650,
     margin=dict(l=0, r=0, b=0, t=0)
 )
 
-st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True, 'scrollZoom': True})
+# Plotlyコンフィグ（ズームボタンを強制追加）
+config = {
+    'scrollZoom': True,
+    'displayModeBar': True,
+    'modeBarButtonsToAdd': ['zoomIn3d', 'zoomOut3d', 'resetCameraLastSave3d'],
+    'displaylogo': False,
+    'responsive': True
+}
+
+st.plotly_chart(fig, use_container_width=True, config=config)
