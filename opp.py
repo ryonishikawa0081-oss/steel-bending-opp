@@ -135,7 +135,7 @@ for i in [0, -1]:
 fig.update_layout(
     scene=dict(
         xaxis_title="長さ", yaxis_title="幅(W)", zaxis_title="高さ",
-        aspectmode='data', 
+        aspectmode='data',
         camera=st.session_state.cam,
         camera_projection=dict(type='perspective')
     ),
@@ -144,12 +144,12 @@ fig.update_layout(
         bgcolor='rgba(255,255,255,0.7)',
         activecolor='#747A4A'
     ),
-    dragmode="orbit", 
+    dragmode="orbit",
     doubleclick="reset",
-    showlegend=False, 
-    height=700, 
+    showlegend=False,
+    height=700,
     margin=dict(l=0, r=0, b=0, t=0),
-    hovermode=False
+    hovermode=None
 )
 
 # Plotlyのコンフィグ設定
@@ -161,4 +161,3 @@ config = {
 }
 
 st.plotly_chart(fig, use_container_width=True, config=config)
-
