@@ -139,13 +139,8 @@ fig.update_layout(
         camera=st.session_state.cam,
         camera_projection=dict(type='perspective')
     ),
-    modebar=dict(
-        orientation='v',
-        bgcolor='rgba(255,255,255,0.7)',
-        activecolor='#747A4A'
-    ),
     dragmode="orbit",
-    doubleclick="reset",   # ← 修正ポイント
+    doubleclick="reset",
     showlegend=False,
     height=700,
     margin=dict(l=0, r=0, b=0, t=0),
@@ -161,4 +156,5 @@ config = {
 }
 
 st.plotly_chart(fig, use_container_width=True, config=config)
+
 
