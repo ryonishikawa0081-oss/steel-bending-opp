@@ -3,13 +3,14 @@ import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
 
-# ページ設定
 st.set_page_config(page_title="鋼材曲げ3D", layout="wide")
-st.title("🏗️ 鋼材曲げ3D：高精度ソリッド＆解析版")
+st.title("🏗️ 鋼材曲げ3D：スマホ拡大対応版")
 
 # --- 1. 基本設定 ---
 st.sidebar.header("🛠️ 1. 基本設定")
-st.sidebar.info("💡 スマホ操作：指1本で回転、指2本で拡大縮小。または右上の＋ーボタンを使用。")
+# ズーム倍率をスライダーで操作できるように追加
+zoom_scale = st.sidebar.slider("🔍 図面の拡大・縮小", 0.1, 5.0, 1.5, 0.1)
+
 shape_type = st.sidebar.selectbox("曲げ形状", ["L型", "コの字型", "Z型 (段曲げ)", "ハット型"])
 mat_type = st.sidebar.selectbox("材質", ["鉄 (7.85)", "ステンレス (7.93)", "アルミ (2.70)"])
 densities = {"鉄 (7.85)": 7.85, "ステンレス (7.93)": 7.93, "アルミ (2.70)": 2.70}
@@ -72,7 +73,7 @@ def get_solid_profiles(t_val, r_val, b_list, a_list, dirs_list, base_index):
 
 p_o, p_i = get_solid_profiles(t, r, b_vals, a_vals, dirs, b_idx)
 
-# --- 3. 寸法解析・重量表示 ---
+# --- 3. 寸法解析 ---
 analysis = []
 total_slen = 0
 for i, val in enumerate(b_vals):
@@ -92,14 +93,18 @@ with st.expander("📊 寸法解析・重量", expanded=True):
     col_b.metric("展開長", f"{total_L:.2f} mm")
     col_b.metric("重量", f"{weight:.2f} kg")
 
-# --- 4. 視点ボタン ---
-st.write("### 📸 視点")
-c = st.columns(4)
-if 'cam' not in st.session_state: st.session_state.cam = dict(eye=dict(x=1.5, y=1.5, z=1.2))
-if c[0].button("アイソメ"): st.session_state.cam = dict(eye=dict(x=1.5, y=1.5, z=1.2))
-if c[1].button("平面"): st.session_state.cam = dict(eye=dict(x=0, y=0, z=2.5), up=dict(x=0, y=1, z=0))
-if c[2].button("正面"): st.session_state.cam = dict(eye=dict(x=0, y=-2.5, z=0))
-if c[3].button("側面"): st.session_state.cam = dict(eye=dict(x=2.5, y=0, z=0))
+# --- 4. 視点設定 ---
+if 'cam' not in st.session_state: 
+    st.session_state.cam = dict(eye=dict(x=zoom_scale, y=zoom_scale, z=zoom_scale*0.8))
+
+# スライダーの値でカメラ距離をリアルタイム更新
+st.session_state.cam['eye'] = dict(
+    x=zoom_scale, 
+    y=zoom_scale, 
+    z=zoom_scale*0.8
+)
+
+st.write("### 📸 3Dビュー (サイドバーのスライダーで拡大)")
 
 # --- 5. 3D描画 ---
 fig = go.Figure()
@@ -115,11 +120,6 @@ for y in y_v:
     fig.add_trace(go.Scatter3d(x=p_o[:,0], y=[y]*len(p_o), z=p_o[:,1], mode='lines', line=dict(color='black', width=3), showlegend=False))
     fig.add_trace(go.Scatter3d(x=p_i[:,0], y=[y]*len(p_i), z=p_i[:,1], mode='lines', line=dict(color='black', width=3), showlegend=False))
 
-for i in [0, -1]:
-    for p in [p_o, p_i]:
-        fig.add_trace(go.Scatter3d(x=[p[i,0]]*2, y=y_v, z=[p[i,1]]*2, mode='lines', line=dict(color='black', width=3), showlegend=False))
-
-# レイアウト設定
 fig.update_layout(
     scene=dict(
         xaxis_title="L", yaxis_title="W", zaxis_title="H",
@@ -127,17 +127,8 @@ fig.update_layout(
         camera=st.session_state.cam
     ),
     dragmode="orbit",
-    height=650,
+    height=600,
     margin=dict(l=0, r=0, b=0, t=0)
 )
 
-# Plotlyコンフィグ（ズームボタンを強制追加）
-config = {
-    'scrollZoom': True,
-    'displayModeBar': True,
-    'modeBarButtonsToAdd': ['zoomIn3d', 'zoomOut3d', 'resetCameraLastSave3d'],
-    'displaylogo': False,
-    'responsive': True
-}
-
-st.plotly_chart(fig, use_container_width=True, config=config)
+st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True})
